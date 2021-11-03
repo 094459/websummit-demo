@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+  web:
+    restart: always
+    build: ./web
+    #image: 704533066374.dkr.ecr.eu-west-1.amazonaws.com/beachgeek:flask-web
+    expose:
+      - "8000"
+    links:
+      - postgres:postgres
+    volumes:
+      - web-data:/usr/src/app/static
+    env_file: 
+      - .env
+    command: /usr/local/bin/gunicorn -w 2 -b :8000 app:app
+    #command: python app.py
+  nginx:
+    restart: always
+    build: ./nginx
+    #image: 704533066374.dkr.ecr.eu-west-1.amazonaws.com/beachgeek:flask-ngnix
+    ports:
+      - "80:80"
+    volumes:
+      - .:/www/static
+      - web-data:/usr/src/app/static
+    links:
+      - web:web
+
+  data:
+    image: postgres:latest
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    command: "true"
+
+  postgres:
+    restart: always
+    image: postgres:latest
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  db-data:
+  web-data:

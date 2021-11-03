@@ -1,0 +1,59 @@
+version: '3'
+
+services:
+  web:
+    restart: always
+    depends_on:
+      - postgres
+    image: 704533066374.dkr.ecr.eu-west-2.amazonaws.com/beachgeek-london:flask-web
+    ports:
+      - "8000:8000"
+    links:
+      - postgres
+    logging:
+      driver: awslogs
+      options: 
+        awslogs-group: flask-ecs
+        awslogs-region: eu-west-2
+        awslogs-stream-prefix: web
+    volumes:
+      - web-data:/usr/src/app/static
+    env_file: 
+      - .env
+    command: /usr/local/bin/gunicorn -w 2 -b :8000 app:app
+    #command: bash -c "/usr/local/bin/gunicorn -w 2 -b :8000 app:app && sleep 10s && python create_db.py"
+  nginx:
+    restart: always
+    image: 704533066374.dkr.ecr.eu-west-2.amazonaws.com/beachgeek-london:flask-ngnix
+    ports:
+      - "80:80"
+    links:
+      - web
+    logging:
+      driver: awslogs
+      options: 
+        awslogs-group: flask-ecs
+        awslogs-region: eu-west-2
+        awslogs-stream-prefix: nginx
+    volumes:
+      - .:/www/static
+      - web-data:/usr/src/app/static
+
+  postgres:
+    restart: always
+    image: postgres:latest
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    logging:
+      driver: awslogs
+      options: 
+        awslogs-group: flask-ecs
+        awslogs-region: eu-west-2
+        awslogs-stream-prefix: postg
+volumes:
+  db-data:
+  web-data:
